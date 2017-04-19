@@ -1,0 +1,171 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="https://github.com/substack/hyperspace"
+
+    >hyperspace (v2.1.4)</a>
+</h1>
+<h4>render streams of html on the client and the server</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.hyperspace">module hyperspace</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.hyperspace.hyperspace">
+            function <span class="apidocSignatureSpan"></span>hyperspace
+            <span class="apidocSignatureSpan">(html, opts, fn)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.hyperspace" id="apidoc.module.hyperspace">module hyperspace</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.hyperspace.hyperspace" id="apidoc.element.hyperspace.hyperspace">
+        function <span class="apidocSignatureSpan"></span>hyperspace
+        <span class="apidocSignatureSpan">(html, opts, fn)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">hyperspace = function (html, opts, fn) {
+    if (typeof html !== &#x27;string&#x27; &#x26;&#x26; !Buffer.isBuffer(html)) {
+        throw new Error(&#x27;invalid html, not a string or buffer&#x27;);
+    }
+    if (typeof opts === &#x27;function&#x27;) {
+        fn = opts;
+        opts = {};
+    }
+    if (!opts) opts = {};
+
+    var first = true;
+    var buckets = {}, bkeys = [];
+    var keyName = opts.key === true ? &#x27;key&#x27; : opts.key;
+    var kattr = opts.attr || (opts.key &#x26;&#x26; &#x27;key&#x27;);
+
+    if (!Array.isArray(keyName)) keyName = [ keyName ];
+    var kof = opts.key === true
+        ? function () { return true }
+        : keyOf(keyName)
+    ;
+
+    var rower = through.obj(function (row, enc, next) {
+        if (first &#x26;&#x26; (typeof row === &#x27;string&#x27; || Buffer.isBuffer(row))) {
+            first = false;
+            var sp = split(function (s) {
+                if (s) return JSON.parse(s);
+            });
+            pipeline.unshift(sp);
+            pipeline.write(row);
+            return next();
+        }
+        first = false;
+
+        if (kattr) {
+            var k = kof(row);
+            if (k) {
+                if (!has(buckets, k)) bkeys.push(k);
+                buckets[k] = fn(row);
+            }
+            next();
+        }
+        else sendParams(fn(row), null, next)
+    }, rend);
+    var pipeline = splicer.obj([ rower ]);
+    return pipeline;
+
+    function rend () {
+        if (!opts.key) return rower.push(null);
+
+        (function next () {
+            if (bkeys.length === 0) return rower.push(null);
+            var k = bkeys.shift();
+            sendParams(buckets[k], k, next);
+        })();
+    }
+
+    function sendParams (params, key, next) {
+        if (!params || typeof params !== &#x27;object&#x27;) return next();
+        var fparams = fix(params);
+        if (key &#x26;&#x26; key !== true) {
+            var star = &#x27;*:first&#x27;;
+            if (!fparams[star]) fparams[star] = {};
+            fparams[star][kattr] = key;
+        }
+
+        var hs = hyperstream(fparams);
+        hs.pipe(through(write, end));
+        hs.end(html);
+        function write (buf, enc, next) { rower.push(buf); next() }
+        function end () { next() }
+    }
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
